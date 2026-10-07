@@ -1,0 +1,32 @@
+# dji-4g-route.service — 4G 源地址策略路由，开机自启 + IP 变化自动重配
+#
+# 安装（推荐用脚本，它会自动填对 ExecStart 的绝对路径）：
+#     sudo scripts/route_4g.sh --install-service
+# 卸载：
+#     sudo scripts/route_4g.sh --uninstall-service
+#
+# 手工安装时把 __SKILL_DIR__ 换成 skill 的实际绝对路径：
+#     sudo cp packaging/dji-4g-route.service /etc/systemd/system/
+#     sudo sed -i "s|__SKILL_DIR__|$PWD|" /etc/systemd/system/dji-4g-route.service
+#     sudo systemctl daemon-reload && sudo systemctl enable --now dji-4g-route
+#
+# 为什么需要它：DHCP/QMI 每次重拨都会换 IP，旧的 `ip rule from <旧IP>` 不会
+# 自动跟随，症状就是「昨天还能上网，今天又不行了」。本服务用 ip monitor 盯着
+# 地址变化，一变就重配（route_4g.sh 是幂等的，会先清旧规则再加新的）。
+
+[Unit]
+Description=DJI 4G module source-based policy routing (auto-reapply on IP change)
+Documentation=file://__SKILL_DIR__/SKILL.md
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=__SKILL_DIR__/scripts/route_4g.sh --watch
+Restart=always
+RestartSec=5
+# route_4g.sh 调用 ip rule/route，需要 root
+User=root
+
+[Install]
+WantedBy=multi-user.target

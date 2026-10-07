@@ -1,0 +1,33 @@
+# vohive.service — vohive 开机自启
+#
+# 安装：
+#     sudo cp packaging/vohive.service /etc/systemd/system/
+#     sudo sed -i "s|__VOHIVE_DIR__|$HOME/vohive|" /etc/systemd/system/vohive.service
+#     sudo systemctl daemon-reload && sudo systemctl enable --now vohive
+#
+# 为什么需要 root：vohive 要访问 /dev/ttyUSB* 和 /dev/cdc-wdm*（root:dialout）。
+# 更精细的做法是把运行用户加进 dialout 组并去掉 User=root，但仍需网络管理能力。
+#
+# 依赖顺序：vohive 先把数据网络拉起来（拿到 wwan0 的 IP），策略路由才有意义，
+# 所以 dji-4g-route 用 After=vohive.service 等它。
+
+[Unit]
+Description=VoHive — 4G/LTE modem management platform
+Documentation=https://github.com/aresbit/vohive
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=__VOHIVE_DIR__
+ExecStart=__VOHIVE_DIR__/vohive -c __VOHIVE_DIR__/config/config.yaml
+Restart=always
+RestartSec=5
+User=root
+# vohive 监听 *:7575，若只想本机访问，在 config.yaml 里改监听地址，
+# 或用下面这行限制（需要 iptables 支持）：
+# IPAddressDeny=any
+# IPAddressAllow=localhost
+
+[Install]
+WantedBy=multi-user.target
